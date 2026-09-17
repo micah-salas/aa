@@ -1,4 +1,4 @@
-/*
+/**
  * Module for handling States
  *
  * All states should be get and set through the StateManager ($SM).
@@ -34,8 +34,8 @@ var StateManager = {
 			'income',
 			'timers',
 			'game',         // mostly location related: fire temp, workers, population, world map, etc
-			'playStats',    // anything play related: play time, loads, etc
-			'previous',     // prestige, score, trophies (in future), achievements (again, not yet), etc
+			'playStats',    // anything play related, loads, etc
+			'previous',     // prestige, score, trophies (in future, achievements (again, not yet), etc
 			'outfit',      	// used to temporarily store the items to be taken on the path
 			'config',
 			'wait',			// mysterious wanderers are coming back
@@ -52,7 +52,7 @@ var StateManager = {
 
 	//create all parents and then set state
 	createState: function(stateName, value) {
-		var words = stateName.split(/[.\[\]'"]+/);
+		var words = stateName.split(/[.\[\]'\"]+/);
 		//for some reason there are sometimes empty strings
 		for (var j = 0; j < words.length; j++) {
 			if (words[j] === '') {
@@ -76,7 +76,7 @@ var StateManager = {
 	set: function(stateName, value, noEvent) {
 		var fullPath = $SM.buildPath(stateName);
 
-		//make sure the value isn't over the engine maximum
+		//make sure value isn't over the engine maximum
 		if(typeof value == 'number' && value > $SM.MAX_STORE) value = $SM.MAX_STORE;
 
 		try{
@@ -102,7 +102,7 @@ var StateManager = {
 	setM: function(parentName, list, noEvent) {
 		$SM.buildPath(parentName);
 
-		//make sure the state exists to avoid errors,
+		//make sure the parent exists to avoid errors,
 		if($SM.get(parentName) === undefined) $SM.set(parentName, {}, true);
 
 		for(var k in list){
@@ -119,20 +119,18 @@ var StateManager = {
 	add: function(stateName, value, noEvent) {
 		var err = 0;
 		//0 if undefined, null (but not {}) should allow adding to new objects
-		//could also add in a true = 1 thing, to have something go from existing (true)
-		//to be a count, but that might be unwanted behavior (add with loose eval probably will happen anyways)
+		//could also add in a true = 1 thing, but that might be unwanted behavior
 		var old = $SM.get(stateName, true);
 
-		//check for NaN (old != old) and non number values
 		if(old != old){
 			Engine.log('WARNING: '+stateName+' was corrupted (NaN). Resetting to 0.');
 			old = 0;
 			$SM.set(stateName, old + value, noEvent);
-		} else if(typeof old != 'number' || typeof value != 'number'){
+		} else if(typeof old != 'number' || typeof value != 'number') {
 			Engine.log('WARNING: Can not do math with state:'+stateName+' or value:'+value+' because at least one is not a number.');
 			err = 1;
 		} else {
-			$SM.set(stateName, old + value, noEvent); //setState handles event and save
+			$SM.set(stateName, old + value, noEvent);
 		}
 
 		return err;
@@ -161,20 +159,17 @@ var StateManager = {
 		var whichState = null;
 		var fullPath = $SM.buildPath(stateName);
 
-		//catch errors if parent of state doesn't exist
 		try{
 			eval('whichState = ('+fullPath+')');
 		} catch (e) {
 			whichState = undefined;
 		}
 
-		//prevents repeated if undefined, null, false or {}, then x = 0 situations
 		if((!whichState || whichState == {}) && requestZero) return 0;
 		else return whichState;
 	},
 
 	//mainly for local copy use, add(M) can fail so we can't shortcut them
-	//since set does not fail, we know state exists and can simply return the object
 	setget: function(stateName, value, noEvent){
 		$SM.set(stateName, value, noEvent);
 		return eval('('+$SM.buildPath(stateName)+')');
@@ -184,9 +179,8 @@ var StateManager = {
 		var whichState = $SM.buildPath(stateName);
 		try{
 			eval('(delete '+whichState+')');
-		} catch (e) {
-			//it didn't exist in the first place
-			Engine.log('WARNING: Tried to remove non-existant state \''+stateName+'\'.');
+	} catch (e) {
+			Engine.log('WARNING: Tried to remove non-existant state \' '+stateName+'\'.');
 		}
 		if(!noEvent){
 			Engine.saveGame();
@@ -197,7 +191,7 @@ var StateManager = {
 	removeBranch: function(stateName, noEvent) {
 		for(var i in $SM.get(stateName)){
 			if(typeof $SM.get(stateName)[i] == 'object'){
-				$SM.removeBranch(stateName +'["'+ i +'"]');
+				$SM.removeBranch(stateName +'["'+ i +'\"]');
 			}
 		}
 		if($.isEmptyObject($SM.get(stateName))){
@@ -209,16 +203,14 @@ var StateManager = {
 		}
 	},
 
-	//creates full reference from input
-	//hopefully this won't ever need to be more complicated
 	buildPath: function(input){
-		var dot = (input.charAt(0) == '[')? '' : '.'; //if it starts with [foo] no dot to join
+		var dot = (input.charAt(0) == '[')? '' : '.';
 		return 'State' + dot + input;
 	},
 
 	fireUpdate: function(stateName, save){
 		var category = $SM.getCategory(stateName);
-		if(stateName === undefined) stateName = category = 'all'; //best if this doesn't happen as it will trigger more stuff
+		if(stateName === undefined) stateName = category = 'all';
 		$.Dispatch('stateUpdate').publish({'category': category, 'stateName':stateName});
 		if(save) Engine.saveGame();
 	},
@@ -239,19 +231,16 @@ var StateManager = {
 		}
 	},
 
-	//Use this function to make old save games compatible with new version
 	updateOldState: function(){
 		var version = $SM.get('version');
 		if(typeof version != 'number') version = 1.0;
 		if(version == 1.0) {
-			// v1.1 introduced the Lodge, so get rid of lodgeless hunters
 			$SM.remove('outside.workers.hunter', true);
 			$SM.remove('income.hunter', true);
 			Engine.log('upgraded save to v1.1');
 			version = 1.1;
 		}
 		if(version == 1.1) {
-			//v1.2 added the Swamp to the map, so add it to already generated maps
 			if($SM.get('world')) {
 				World.placeLandmark(15, World.RADIUS * 1.5, World.TILE.SWAMP, $SM.get('world.map'));
 			}
@@ -259,7 +248,6 @@ var StateManager = {
 			version = 1.2;
 		}
 		if(version == 1.2) {
-			//StateManager added, so move data to new locations
 			$SM.remove('room.fire');
 			$SM.remove('room.temperature');
 			$SM.remove('room.buttons');
@@ -321,7 +309,6 @@ var StateManager = {
 	/******************************************************************
 	 * Start of specific state functions
 	 ******************************************************************/
-	//PERKS
 	addPerk: function(name) {
 		$SM.set('character.perks["'+name+'"]', true);
 		Notifications.notify(null, Engine.Perks[name].notify);
@@ -377,6 +364,10 @@ var StateManager = {
 
 					if(ok){
 						$SM.addM('stores', income.stores, true);
+						// Trappers now service the traps automatically once per work cycle.
+						if(source == 'trapper' && typeof Outside != 'undefined') {
+							Outside.checkTraps(true);
+						}
 					}
 					changed = true;
 					if(typeof income.delay == 'number') {
@@ -396,7 +387,6 @@ var StateManager = {
 		for(var k in stores) {
 			var old = $SM.get('stores["'+k+'"]', true);
 			var short = old + stores[k];
-			//if they would steal more than actually owned
 			if(short < 0){
 				$SM.add('game.stolen["'+k+'"]', (stores[k] * -1) + short);
 			} else {
